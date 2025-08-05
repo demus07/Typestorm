@@ -45,13 +45,6 @@ app.use(
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
-app.use((req, res, next) => {
-  if (req.method === "GET" && req.accepts("html")) {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-  } else {
-    next();
-  }
-});
 // const word = randomWords.generate();
 // console.log(word);
 
