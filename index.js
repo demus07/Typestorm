@@ -81,16 +81,21 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-  const existingUser = await User.findOne({ username });
-  if (existingUser) {
-    return res.render("register", { error: "Username already taken" });
+  try {
+    const { username, password } = req.body;
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.render("register", { error: "Username already taken" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashedPassword });
+    await user.save();
+    req.session.user = user;
+    res.redirect("/typing");
+  } catch (err) {
+    console.error("Registration error:", err);
+    res.status(500).send("Server error during registration");
   }
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = new User({ username, password: hashedPassword });
-  await user.save();
-  req.session.user = user;
-  res.redirect("/typing");
 });
 
 app.post("/submit-score", async (req, res) => {
