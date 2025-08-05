@@ -1,0 +1,140 @@
+const letters = Array.from(document.querySelectorAll(".letter"));
+let currentLetterIndex = 0;
+const accuracyDisplay = document.getElementById("accuracy-display");
+let totalTyped = 0;
+let correctTyped = 0;
+
+const timerDisplay = document.getElementById("timer-display");
+const totalTime = 30; // seconds
+let timeLeft = totalTime;
+let timerInterval = null;
+
+const caret = document.getElementById("caret");
+
+function updateCaret() {
+  const current = letters[currentLetterIndex];
+  if (!current) {
+    caret.style.display = "none";
+    return;
+  }
+
+  const { offsetLeft, offsetTop, offsetHeight } = current;
+  caret.style.left = `${offsetLeft}px`;
+  caret.style.top = `${offsetTop}px`;
+  caret.style.height = `${offsetHeight}px`;
+  caret.style.display = "block";
+}
+
+function updateScroll() {
+  const current = letters[currentLetterIndex];
+  if (!current) return;
+
+  const wordsContainer = document.getElementById("words");
+  const container = wordsContainer.parentElement;
+
+  const currentTop = current.offsetTop;
+  const containerHeight = container.offsetHeight;
+
+  const offset = currentTop - containerHeight / 2;
+
+  // Scroll the words
+  wordsContainer.style.transform = `translateY(-${offset}px)`;
+
+  // Scroll the caret to match
+  caret.style.transform = `translateY(-${offset}px)`;
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerDisplay.textContent = `Time: ${timeLeft}s`;
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      document.removeEventListener("keydown", handleKeydown);
+      timerDisplay.textContent = "Time's up!";
+    }
+  }, 1000);
+}
+
+let startTime = null;
+const wpmDisplay = document.getElementById("wpm-display");
+function updateHighlighting() {
+  letters.forEach((letter, idx) => {
+    letter.classList.remove("current");
+    if (idx === currentLetterIndex) {
+      letter.classList.add("current");
+      updateCaret();
+    }
+  });
+  updateScroll();
+}
+
+function handleKeydown(e) {
+  const key = e.key;
+
+  if (key.length > 1 && key !== "Backspace") return;
+
+  if (!startTime) {
+    startTime = new Date();
+    startTimer(); // start countdown
+  }
+
+  if (key === "Backspace") {
+    if (currentLetterIndex > 0) {
+      currentLetterIndex--;
+      const removedLetter = letters[currentLetterIndex];
+      if (removedLetter.classList.contains("correct")) correctTyped--;
+      if (
+        removedLetter.classList.contains("correct") ||
+        removedLetter.classList.contains("incorrect")
+      ) {
+        totalTyped--;
+      }
+      removedLetter.classList.remove("correct", "incorrect");
+    }
+  } else {
+    const currentLetter = letters[currentLetterIndex];
+    if (!currentLetter) return;
+
+    const expectedChar =
+      currentLetter.textContent === "\u00A0" ? " " : currentLetter.textContent;
+
+    if (key === expectedChar) {
+      currentLetter.classList.add("correct");
+      correctTyped++;
+    } else {
+      currentLetter.classList.add("incorrect");
+    }
+
+    totalTyped++;
+    currentLetterIndex++;
+  }
+
+  updateHighlighting();
+  updateWPM();
+  updateAccuracy();
+}
+
+function updateAccuracy() {
+  if (totalTyped === 0) {
+    accuracyDisplay.textContent = `Accuracy: 100%`;
+    return;
+  }
+  const accuracy = ((correctTyped / totalTyped) * 100).toFixed(1);
+  accuracyDisplay.textContent = `Accuracy: ${accuracy}%`;
+}
+function updateWPM() {
+  const now = new Date();
+  const timeElapsed = (now - startTime) / 60000; // in minutes
+  const correctLetters = document.querySelectorAll(".letter.correct").length;
+  const wpm = Math.round(correctLetters / 5 / timeElapsed);
+  wpmDisplay.textContent = `WPM: ${wpm}`;
+}
+
+document.getElementById("restart-btn").addEventListener("click", () => {
+  location.reload(); // simplest restart method for now
+});
+
+document.addEventListener("keydown", handleKeydown);
+updateHighlighting();

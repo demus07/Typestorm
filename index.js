@@ -8,7 +8,7 @@ const path = require("path");
 const randomWords = require("random-words");
 
 mongoose
-  .connect("mongodb://localhost:27017/monkeytype", {
+  .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -59,7 +59,7 @@ function requireLogin(req, res, next) {
 }
 
 app.get("/", (req, res) => {
-  res.redirect("/register");
+  res.render("index", { randomWords, currentUser: req.session.user || null });
 });
 
 app.get("/login", (req, res) => {
@@ -93,7 +93,11 @@ app.post("/register", async (req, res) => {
   res.redirect("/typing");
 });
 
-app.post("/submit-score", requireLogin, async (req, res) => {
+app.post("/submit-score", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).send("User not logged in. Score not saved.");
+  }
+
   const { wpm, accuracy, duration } = req.body;
   const user = req.session.user;
   const score = new Score({
@@ -118,6 +122,7 @@ app.get("/leaderboard", requireLogin, async (req, res) => {
         username: { $first: "$username" },
         wpm: { $first: "$wpm" },
         accuracy: { $first: "$accuracy" },
+        duration: { $first: "$duration" },
         createdAt: { $first: "$createdAt" },
       },
     },
@@ -128,6 +133,12 @@ app.get("/leaderboard", requireLogin, async (req, res) => {
       $limit: 10,
     },
   ]);
+
+  topScoresPerUser.forEach((score) => {
+    if (typeof score.duration !== "number" || isNaN(score.duration)) {
+      score.duration = 30; // default fallback duration
+    }
+  });
 
   res.render("leaderboard", {
     topScores: topScoresPerUser,
@@ -151,6 +162,7 @@ app.get("/test-save-score", async (req, res) => {
       username: user.username,
       wpm: 80,
       accuracy: "98%",
+      duration: 30,
     });
 
     await score.save();
@@ -162,7 +174,7 @@ app.get("/test-save-score", async (req, res) => {
 });
 
 app.get("/typing", requireLogin, (req, res) => {
-  res.render("index", { randomWords });
+  res.render("index", { randomWords, currentUser: req.session.user || null });
 });
 
 app.listen(port, () => {
