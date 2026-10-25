@@ -13,13 +13,15 @@ const bcrypt = require("bcrypt");
 const { version } = require("./package.json");
 
 const port = process.env.PORT || 3000;
-const isProd = process.env.NODE_ENV === "production";
+const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 
-if (!process.env.MONGO_URI) {
+// MONGODB_URI is what the Vercel MongoDB Atlas integration provides.
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+if (!mongoUri) {
   console.warn("MONGO_URI is not set - accounts, results and leaderboards will not work.");
 }
 mongoose
-  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/typestorm")
+  .connect(mongoUri || "mongodb://127.0.0.1:27017/typestorm", { dbName: process.env.MONGO_DB || undefined })
   .then(() => {
     console.log("MongoDB connected");
     migrateLegacyData().catch((err) => console.error("Migration failed:", err));
@@ -540,6 +542,11 @@ app.use((err, req, res, next) => {
   res.status(500).send("Internal server error");
 });
 
-app.listen(port, () => {
-  console.log(`Typestorm v${version} running on http://localhost:${port}`);
-});
+// On Vercel the app is exported and invoked as a function; locally it listens.
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Typestorm v${version} running on http://localhost:${port}`);
+  });
+}
+
+module.exports = app;
