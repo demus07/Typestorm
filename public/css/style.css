@@ -719,10 +719,13 @@ body.focus #logo .icon {
   content: "acc";
 }
 
+/* Side room so a caret before the first letter of a line is never clipped. */
 #wordsWrapper {
   position: relative;
   overflow: hidden;
   cursor: text;
+  padding: 0 0.75rem;
+  margin: 0 -0.75rem;
 }
 #wordsInput {
   position: absolute;
@@ -799,26 +802,26 @@ letter hint {
 }
 
 /* The caret leans forward, like the mark in the logo. */
+/* Letter boxes sit high in Newsreader, so the caret is nudged down onto the glyphs. */
 #caret {
   position: absolute;
-  width: 0.09em;
-  height: 1.15em;
+  width: 0.075em;
+  height: 0.88em;
+  border-radius: 0.04em;
   background: var(--caret-color);
-  transform: translateY(-50%) skewX(-12deg);
+  transform: translate(-75%, calc(-50% - 0.03em)) skewX(-7deg);
   pointer-events: none;
   z-index: 2;
-  margin-left: -0.045em;
 }
 #paceCaret {
   position: absolute;
-  width: 0.09em;
-  height: 1.15em;
+  width: 0.075em;
+  height: 0.88em;
   background: var(--sub-color);
   opacity: 0.5;
-  transform: translateY(-50%) skewX(-12deg);
+  transform: translate(-75%, calc(-50% - 0.03em)) skewX(-7deg);
   pointer-events: none;
   z-index: 1;
-  margin-left: -0.045em;
   transition: left 0.05s linear, top 0.1s ease-out;
 }
 #paceCaret.block,
@@ -1017,13 +1020,15 @@ letter hint {
   outline-offset: 4px;
 }
 
-/* ---------- results ---------- */
+/* ---------- results ----------
+   Read in order: the number, what it means, how it unfolded, then the detail.
+   Every figure is a quiet instrument: a value, and where useful a hairline meter. */
 
 #result {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: clamp(2rem, 5vw, 4.5rem);
-  row-gap: 2rem;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  column-gap: clamp(2rem, 6vw, 5.5rem);
+  row-gap: clamp(2.25rem, 5vh, 3.25rem);
 }
 #result:not(.hidden) > * {
   animation: rise var(--dur-3) var(--ease) both;
@@ -1032,13 +1037,13 @@ letter hint {
   animation-delay: 80ms;
 }
 #result:not(.hidden) > :nth-child(3) {
-  animation-delay: 160ms;
+  animation-delay: 200ms;
 }
 #result:not(.hidden) > :nth-child(4) {
-  animation-delay: 240ms;
+  animation-delay: 280ms;
 }
 #result:not(.hidden) > :nth-child(n + 5) {
-  animation-delay: 320ms;
+  animation-delay: 360ms;
 }
 @keyframes rise {
   from {
@@ -1047,125 +1052,254 @@ letter hint {
   }
 }
 
-#result .stats {
+#result .hero {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.75rem;
 }
-#result .stats .group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+#result .wpmValue {
+  margin: 1rem 0 0 -0.04em;
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(5rem, 3rem + 6vw, 9rem);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  color: var(--main-color);
+  font-variant-numeric: tabular-nums;
 }
 #result .verdict {
-  margin: 0.35rem 0 0;
-  max-width: 22ch;
+  margin: 1.25rem 0 0;
+  max-width: 20ch;
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 300;
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   line-height: 1.3;
   color: var(--text-color);
+  text-wrap: balance;
 }
 #result .verdict:empty {
   display: none;
 }
-#result .stats .bottom {
-  font-family: var(--font-display);
-  font-weight: 300;
-  line-height: 0.85;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-#result .wpm .bottom {
-  font-size: clamp(4.5rem, 3rem + 5vw, 8rem);
-  color: var(--main-color);
-}
-#result .acc .bottom {
-  font-size: clamp(2.5rem, 2rem + 2vw, 3.75rem);
-  color: var(--text-color);
+#result .testType {
+  margin: 0.9rem 0 0;
+  font-size: 0.875rem;
+  color: var(--sub-color);
 }
 #result .crown {
   margin-left: 0.4rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.2rem 0.6rem;
   border: 1px solid var(--main-color);
   border-radius: 999px;
   color: var(--main-color);
   font-size: 0.75rem;
-  animation: rise var(--dur-2) var(--ease) both;
+  line-height: 1.2;
+  animation: rise var(--dur-3) var(--ease) 0.5s both;
 }
+
 #result .chart {
-  position: relative;
-  height: 230px;
+  margin: 0;
   min-width: 0;
-  align-self: end;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+#result .canvasWrap {
+  position: relative;
+  height: clamp(220px, 32vh, 290px);
 }
 #result .legend {
-  grid-column: 2;
   display: flex;
-  gap: 1.25rem;
-  margin-top: -1.25rem;
+  gap: 1.5rem;
+  padding-left: 2.25rem;
   font-size: 0.75rem;
   color: var(--sub-color);
 }
 #result .legend .k {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 #result .legend .k::before {
   content: "";
-  width: 0.9rem;
+  width: 1rem;
   height: 2px;
+  border-radius: 1px;
   background: var(--main-color);
 }
 #result .legend .raw::before {
+  height: 1px;
   background: var(--sub-color);
 }
 #result .legend .err::before {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 2px;
+  height: 0.6rem;
   background: var(--error-color);
-  transform: rotate(45deg);
 }
 
-#result .morestats {
+/* Instruments: value first, then a hairline meter or a short note. */
+#result .instruments {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  margin: 0;
-  border-top: 1px solid var(--line-color);
-}
-#result .morestats .group {
-  padding: 1.1rem 1.25rem 0 0;
-}
-#result .morestats .top {
-  font: 400 0.8125rem/1.3 var(--font-ui);
-  color: var(--sub-color);
-  margin-bottom: 0.5rem;
-}
-#result .morestats dd {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  column-gap: clamp(1.5rem, 3vw, 2.5rem);
+  row-gap: 2rem;
   margin: 0;
 }
-#result .morestats .bottom {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
+#result .instruments .group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
 }
-#result .testType .bottom,
-#result .info .bottom,
-#result .source .bottom {
-  font-family: var(--font-ui);
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  color: var(--text-color);
-}
-#result .session {
-  margin-top: 0.3rem;
+#result .instruments dt {
   font-size: 0.8125rem;
   color: var(--sub-color);
+}
+#result .instruments dd {
+  margin: 0;
+}
+#result .instruments .value {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(2.25rem, 1.8rem + 1.2vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+#result .instruments .text {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+#result .instruments .note {
+  font-size: 0.8125rem;
+  color: var(--sub-color);
+}
+#result .meter {
+  position: relative;
+  height: 1px;
+  margin-top: 0.35rem;
+  background: var(--line-color);
+}
+#result .meter span {
+  position: absolute;
+  left: 0;
+  top: -0.5px;
+  height: 2px;
+  width: var(--v, 0%);
+  background: var(--text-color);
+  transition: width 0.9s var(--ease);
+}
+
+/* Characters: one proportional bar, keyed beneath. */
+#result .characters {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  column-gap: clamp(2rem, 6vw, 5.5rem);
+  row-gap: 0.85rem;
+  align-items: center;
+}
+#result .characters .label {
+  grid-row: span 2;
+  align-self: start;
+}
+#result .charBar {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+#result .charBar span {
+  height: 100%;
+  border-radius: 1px;
+  background: var(--text-color);
+  transform-origin: left;
+  animation: grow 0.9s var(--ease) 0.4s both;
+}
+#result .charBar .incorrect {
+  background: var(--error-color);
+}
+#result .charBar .extra {
+  background: var(--error-extra-color);
+}
+#result .charBar .missed {
+  background: var(--line-color);
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+#result .charKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.75rem;
+  font-size: 0.875rem;
+  color: var(--sub-color);
+}
+#result .charKey b {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--text-color);
+  margin-right: 0.35rem;
+}
+#result .charKey .incorrect.some b {
+  color: var(--error-color);
+}
+
+/* Rhythm: the words themselves, brighter where the hands were quicker. */
+#result .rhythm {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  column-gap: clamp(2rem, 6vw, 5.5rem);
+  row-gap: 0.85rem;
+}
+#result .rhythm .label {
+  grid-row: span 2;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: start;
+  gap: 0.3rem;
+}
+#result .rhythm .aside {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+#result .rhythmWords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2em 0.55em;
+  font-family: var(--font);
+  font-size: 1.375rem;
+  line-height: 1.5;
+}
+#result .rhythmWords span {
+  color: var(--text-color);
+  opacity: var(--o, 1);
+  border-bottom: 1px solid transparent;
+  transition: opacity var(--dur-1) var(--ease);
+}
+#result .rhythmWords span.error {
+  border-bottom-color: var(--error-color);
+}
+#result .rhythmWords:hover span {
+  opacity: calc(var(--o, 1) * 0.6);
+}
+#result .rhythmWords span:hover {
+  opacity: 1;
+}
+#result .slowest {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--sub-color);
+}
+#result .slowest em {
+  font-family: var(--font);
+  font-size: 1.05em;
+  color: var(--text-color);
 }
 
 #result .buttons {
@@ -1483,7 +1617,13 @@ letter hint {
 #footer .keyTips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 2rem;
+  gap: 0.5rem 2.25rem;
+  font-size: 0.9375rem;
+}
+#footer .keyTips kbd {
+  font-size: 0.8em;
+  padding: 0.25em 0.5em 0.3em;
+  margin: 0 0.15em;
 }
 #footer .bottom {
   display: grid;
@@ -2200,20 +2340,78 @@ letter hint {
   height: 260px;
   position: relative;
 }
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 2rem;
-  row-gap: 1.75rem;
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
 }
-.statsGrid .stat {
-  border-top: 1px solid var(--line-color);
+.ledger th,
+.ledger td {
+  text-align: left;
+  font-weight: 400;
+  padding: 1.1rem 1rem 1.1rem 0;
+  border-bottom: 1px solid var(--line-color);
 }
-.statsGrid .value {
+.ledger thead th {
+  padding-top: 0;
+  padding-bottom: 0.8rem;
+  font-size: 0.8125rem;
+  color: var(--sub-color);
+}
+.ledger tbody th {
+  width: 28%;
+  font-size: 0.9375rem;
+  color: var(--sub-color);
+}
+.ledger td {
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-weight: 300;
+  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.375rem);
   line-height: 1;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
+}
+.ledger .lean {
+  margin-left: 0.6rem;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  letter-spacing: 0;
+  vertical-align: 0.5em;
+  color: var(--sub-color);
+}
+.ledger .lean.up {
+  color: var(--main-color);
+}
+.statsGrid .caption,
+.statsGrid .empty {
+  margin: 0.9rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--sub-color);
+}
+.chartKey {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--sub-color);
+}
+.chartKey .k {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chartKey .dot::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--main-color);
+  opacity: 0.6;
+}
+.chartKey .avg::before {
+  content: "";
+  width: 1rem;
+  height: 2px;
+  background: var(--main-color);
 }
 .historyTable .info {
   color: var(--sub-color);
@@ -2343,17 +2541,17 @@ letter hint {
     padding-top: 2.5rem;
   }
 
-  #result {
+  #result,
+  #result .characters,
+  #result .rhythm {
     grid-template-columns: 1fr;
   }
-  #result .stats {
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: space-between;
+  #result .characters .label,
+  #result .rhythm .label {
+    grid-row: auto;
   }
   #result .legend {
-    grid-column: 1;
-    margin-top: -1rem;
+    padding-left: 0;
   }
   #result .buttons {
     flex-direction: column;
@@ -2387,9 +2585,6 @@ letter hint {
   }
   .profileCard {
     grid-template-columns: 1fr;
-  }
-  .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   #pageAbout .globalStats {
     grid-template-columns: 1fr;
@@ -2484,7 +2679,7 @@ letter hint {
     justify-content: center;
     column-gap: 0.9rem;
   }
-  #result .morestats {
+  #result .instruments {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .profileCard .typingStats {
@@ -2499,13 +2694,6 @@ letter hint {
   }
   .pbGroup .row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .statsGrid {
-    grid-template-columns: 1fr 1fr;
-    column-gap: 1.25rem;
-  }
-  .statsGrid .value {
-    font-size: 1.6rem;
   }
   .lbTable td,
   .historyTable td {

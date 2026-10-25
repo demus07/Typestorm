@@ -50,29 +50,31 @@ function pbsMarkup(pbs) {
   return box("time", ["15", "30", "60", "120"], "sec", "Personal bests, timed") + box("words", ["10", "25", "50", "100"], "words", "Personal bests, word count");
 }
 
+// A ledger: one row per measure, read across as best, average and the last ten.
+// The last-ten column notes which way it leans against the overall average.
 function statsMarkup() {
-  const wpm = results.map((r) => r.wpm);
-  const raw = results.map((r) => r.rawWpm ?? r.wpm);
-  const acc = results.map((r) => r.acc ?? 0);
-  const con = results.map((r) => r.consistency).filter((c) => c != null);
+  if (!results.length) return `<p class="empty">No saved tests yet.</p>`;
   const last10 = results.slice(0, 10);
-  const stat = (label, value) => `<div class="stat"><div class="top">${label}</div><div class="value">${value}</div></div>`;
-  const fmt = (n) => (Number.isFinite(n) && results.length ? Math.round(n) : "-");
-  const pct = (n) => (Number.isFinite(n) && results.length ? `${Math.round(n)}%` : "-");
-  return [
-    stat("Highest wpm", fmt(Math.max(...wpm))),
-    stat("Average wpm", fmt(mean(wpm))),
-    stat("Average wpm, last 10", fmt(mean(last10.map((r) => r.wpm)))),
-    stat("Highest raw wpm", fmt(Math.max(...raw))),
-    stat("Average raw wpm", fmt(mean(raw))),
-    stat("Average raw, last 10", fmt(mean(last10.map((r) => r.rawWpm ?? r.wpm)))),
-    stat("Highest accuracy", pct(Math.max(...acc))),
-    stat("Average accuracy", pct(mean(acc))),
-    stat("Average accuracy, last 10", pct(mean(last10.map((r) => r.acc ?? 0)))),
-    stat("Highest consistency", con.length ? pct(Math.max(...con)) : "-"),
-    stat("Average consistency", con.length ? pct(mean(con)) : "-"),
-    stat("Tests saved", results.length),
-  ].join("");
+  const rows = [
+    ["Speed", (r) => r.wpm, ""],
+    ["Raw speed", (r) => r.rawWpm ?? r.wpm, ""],
+    ["Accuracy", (r) => r.acc ?? 0, "%"],
+    ["Consistency", (r) => r.consistency, "%"],
+  ];
+  const body = rows
+    .map(([label, get, unit]) => {
+      const all = results.map(get).filter((v) => v != null);
+      const recent = last10.map(get).filter((v) => v != null);
+      if (!all.length) return "";
+      const avg = mean(all);
+      const lately = mean(recent);
+      const d = Math.round(lately - avg);
+      const lean = d ? `<span class="lean ${d > 0 ? "up" : "down"}">${d > 0 ? "↑" : "↓"} ${Math.abs(d)}</span>` : "";
+      return `<tr><th scope="row">${label}</th><td>${Math.round(Math.max(...all))}${unit}</td><td>${Math.round(avg)}${unit}</td><td>${Math.round(lately)}${unit}${lean}</td></tr>`;
+    })
+    .join("");
+  return `<table class="ledger"><thead><tr><th></th><th scope="col">Best</th><th scope="col">Average</th><th scope="col">Last 10</th></tr></thead><tbody>${body}</tbody></table>
+    <p class="caption">${results.length} saved ${results.length === 1 ? "test" : "tests"}. Speed in words per minute.</p>`;
 }
 
 function modeText(r) {
@@ -109,6 +111,12 @@ function showMore() {
   if (!results.length) tbody.innerHTML = `<tr><td colspan="8" class="empty">No saved results yet. Finish a test while signed in and it appears here.</td></tr>`;
 }
 
+// Hex colour with alpha, for the dots and the wash under the average.
+const alpha = (hex, a) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+};
+
 function renderHistoryChart() {
   chart?.destroy();
   if (!window.Chart) return;
@@ -127,18 +135,30 @@ function renderHistoryChart() {
           label: "wpm",
           data: ordered.map((r) => r.wpm),
           showLine: false,
-          pointRadius: 2,
+          pointRadius: 2.5,
           pointHoverRadius: 4,
-          backgroundColor: main,
-          borderColor: main,
+          pointBorderWidth: 0,
+          backgroundColor: alpha(main, 0.5),
+          order: 2,
         },
         {
           label: "average of 10",
           data: avg10,
-          borderColor: css("--text-color"),
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.3,
+          borderColor: main,
+          borderWidth: 2,
+          pointRadius: (c) => (c.dataIndex === avg10.length - 1 ? 3.5 : 0),
+          pointBackgroundColor: main,
+          pointBorderWidth: 0,
+          tension: 0.4,
+          fill: "origin",
+          backgroundColor: ({ chart: { ctx: c, chartArea: a } }) => {
+            if (!a) return "transparent";
+            const g = c.createLinearGradient(0, a.top, 0, a.bottom);
+            g.addColorStop(0, alpha(main, 0.14));
+            g.addColorStop(1, alpha(main, 0));
+            return g;
+          },
+          order: 1,
         },
       ],
     },
@@ -151,20 +171,22 @@ function renderHistoryChart() {
         legend: { display: false },
         tooltip: {
           backgroundColor: css("--bg-color"),
-          titleColor: css("--text-color"),
+          titleColor: sub,
           bodyColor: css("--text-color"),
           borderColor: line,
           borderWidth: 1,
           cornerRadius: 4,
-          padding: 10,
+          padding: { x: 12, y: 10 },
           titleFont: font,
-          bodyFont: font,
+          bodyFont: { ...font, size: 12 },
+          displayColors: false,
           callbacks: {
             title: (items) => {
               const r = ordered[items[0].dataIndex];
               return `${modeText(r)} · ${formatDate(r.createdAt)}`;
             },
-            label: (item) => `${item.dataset.label}: ${item.parsed.y.toFixed(2)}`,
+            label: (item) =>
+              item.dataset.label === "wpm" ? `${item.parsed.y.toFixed(1)} wpm` : `${Math.round(item.parsed.y)} wpm, average of 10`,
           },
         },
       },
@@ -172,10 +194,10 @@ function renderHistoryChart() {
         x: { ticks: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
           beginAtZero: true,
-          ticks: { color: sub, font, maxTicksLimit: 6 },
-          grid: { color: line },
-          border: { display: false },
-          title: { display: false },
+          grace: "8%",
+          ticks: { color: sub, font, maxTicksLimit: 4, precision: 0, padding: 10 },
+          grid: { color: line, drawTicks: false },
+          border: { display: false, dash: [2, 4] },
         },
       },
     },

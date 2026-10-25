@@ -669,6 +669,8 @@ export function handleKeydown(e) {
   if (ae !== els.input) {
     if (ae?.matches?.("button, a") && (e.key === "Enter" || e.key === " ")) return;
     if (ae?.matches?.("input, textarea, select")) return;
+    // A space typed just as the test ends shouldn't scroll the result away.
+    if (isResultVisible() && e.key === " ") return e.preventDefault();
     if (!isResultVisible() && isTypingKey(e)) {
       e.preventDefault();
       focusInput();

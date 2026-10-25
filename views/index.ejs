@@ -139,30 +139,34 @@
             </div>
 
             <div id="result" class="hidden">
-              <div class="stats">
-                <div class="group wpm">
-                  <div class="top label">Words per minute<span class="crown hidden">Personal best</span></div>
-                  <div class="bottom" id="resWpm">-</div>
-                  <p class="verdict" id="resVerdict"></p>
-                </div>
-                <div class="group acc">
-                  <div class="top label">Accuracy</div>
-                  <div class="bottom" id="resAcc">-</div>
-                </div>
+              <div class="hero">
+                <div class="label">Words per minute<span class="crown hidden">Personal best</span></div>
+                <div class="wpmValue" id="resWpm">-</div>
+                <p class="verdict" id="resVerdict"></p>
+                <p class="testType" id="resTestType"></p>
               </div>
-              <div class="chart">
-                <canvas id="resultChart" aria-label="Speed over the test, second by second" role="img"></canvas>
-              </div>
-              <div class="legend" aria-hidden="true"><span class="k wpm">wpm</span><span class="k raw">raw</span><span class="k err">errors</span></div>
-              <dl class="morestats">
-                <div class="group testType"><dt class="top">Test</dt><dd class="bottom" id="resTestType"></dd></div>
-                <div class="group raw"><dt class="top">Raw wpm</dt><dd class="bottom" id="resRaw"></dd></div>
-                <div class="group key"><dt class="top">Characters</dt><dd class="bottom" id="resChars" title="correct / incorrect / extra / missed"></dd></div>
-                <div class="group consistency"><dt class="top">Consistency</dt><dd class="bottom" id="resConsistency"></dd></div>
-                <div class="group time"><dt class="top">Time</dt><dd class="bottom" id="resTime"></dd><dd class="session" id="resSession"></dd></div>
-                <div class="group source hidden"><dt class="top">Source</dt><dd class="bottom" id="resSource"></dd></div>
-                <div class="group info hidden"><dt class="top">Note</dt><dd class="bottom" id="resOther"></dd></div>
+              <figure class="chart">
+                <div class="canvasWrap"><canvas id="resultChart" aria-label="Speed over the test, second by second" role="img"></canvas></div>
+                <figcaption class="legend" aria-hidden="true"><span class="k wpm">wpm</span><span class="k raw">raw</span><span class="k err">errors</span></figcaption>
+              </figure>
+              <dl class="instruments">
+                <div class="group acc"><dt>Accuracy</dt><dd class="value" id="resAcc">-</dd><dd class="meter" aria-hidden="true"><span></span></dd></div>
+                <div class="group consistency"><dt>Consistency</dt><dd class="value" id="resConsistency">-</dd><dd class="meter" aria-hidden="true"><span></span></dd></div>
+                <div class="group raw"><dt>Raw wpm</dt><dd class="value" id="resRaw">-</dd><dd class="note" id="resRawNote"></dd></div>
+                <div class="group time"><dt>Time</dt><dd class="value" id="resTime">-</dd><dd class="note" id="resSession"></dd></div>
+                <div class="group source hidden"><dt>Source</dt><dd class="text" id="resSource"></dd></div>
+                <div class="group info hidden"><dt>Note</dt><dd class="text" id="resOther"></dd></div>
               </dl>
+              <div class="characters">
+                <div class="label">Characters</div>
+                <div class="charBar" id="charBar" aria-hidden="true"></div>
+                <div class="charKey" id="resChars"></div>
+              </div>
+              <div class="rhythm hidden" id="rhythm">
+                <div class="label">Rhythm<span class="aside">Brighter words were typed faster</span></div>
+                <div class="rhythmWords" id="rhythmWords"></div>
+                <p class="slowest" id="rhythmSlowest"></p>
+              </div>
               <div class="buttons">
                 <button type="button" class="button primary" id="nextTestButton">Next test<span class="arrow" aria-hidden="true">→</span></button>
                 <div class="secondary">
@@ -357,6 +361,7 @@
             <div class="block">
               <div class="label">Progress</div>
               <div class="chartWrap"><canvas id="historyChart" role="img" aria-label="Speed of each saved test over time"></canvas></div>
+              <p class="chartKey"><span class="k dot">each test</span><span class="k avg">average of the last ten</span></p>
             </div>
             <div class="block">
               <div class="label">Averages and records</div>

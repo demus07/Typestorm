@@ -1,4 +1,4 @@
-import { $, esc, formatDuration, round } from "./utils.js";
+import { $, $$, esc, formatDuration, round } from "./utils.js";
 import { api } from "./api.js";
 import { auth } from "./auth.js";
 import { notify } from "./notifications.js";
@@ -65,7 +65,60 @@ function testTypeText(r, s) {
   if (r.numbers) lines.push("numbers");
   if (r.difficulty !== "normal") lines.push(r.difficulty);
   if (r.blindMode) lines.push("blind");
-  return lines.map(esc).join("<br>");
+  return lines.map(esc).join(" · ");
+}
+
+const CHAR_KINDS = ["correct", "incorrect", "extra", "missed"];
+
+function charactersMarkup(stats) {
+  const total = stats.reduce((a, b) => a + b, 0) || 1;
+  $("#charBar").innerHTML = stats
+    .map((n, i) => (n ? `<span class="${CHAR_KINDS[i]}" style="flex:${n / total}"></span>` : ""))
+    .join("");
+  $("#resChars").innerHTML = stats.map((n, i) => `<span class="${CHAR_KINDS[i]}${n ? " some" : ""}"><b>${n}</b>${CHAR_KINDS[i]}</span>`).join("");
+  $("#resChars").title = "correct / incorrect / extra / missed";
+}
+
+// Speed of each finished word, from the keystroke log. A word's time runs from the space
+// that ended the previous word to the space that ends it, so it covers its letters and its space.
+function wordSpeeds(replay, words, inputs) {
+  const starts = [];
+  for (const e of replay) if (starts[e.w] === undefined) starts[e.w] = e.t;
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    if (starts[i] === undefined || starts[i + 1] === undefined || !words[i]) continue;
+    const ms = starts[i + 1] - (i === 0 ? 0 : starts[i]);
+    if (ms <= 0) continue;
+    out.push({ word: words[i], wpm: (words[i].length + 1) / 5 / (ms / 60000), error: (inputs[i] ?? "") !== words[i] });
+  }
+  return out;
+}
+
+function rhythmMarkup(c) {
+  const box = $("#rhythm");
+  const words = c.settings.mode === "zen" ? c.inputs : c.words;
+  const speeds = wordSpeeds(c.replay ?? [], words, c.inputs).slice(0, 160);
+  box.classList.toggle("hidden", speeds.length < 4);
+  if (speeds.length < 4) return;
+  // Map speed to brightness between the 10th and 90th percentile, so one outlier doesn't flatten the rest.
+  const sorted = speeds.map((s) => s.wpm).sort((a, b) => a - b);
+  const lo = sorted[Math.floor(sorted.length * 0.1)];
+  const hi = sorted[Math.ceil(sorted.length * 0.9) - 1];
+  const level = (v) => (hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 1);
+  $("#rhythmWords").innerHTML = speeds
+    .map(
+      (s) =>
+        `<span class="${s.error ? "error" : ""}" style="--o:${(0.28 + 0.72 * level(s.wpm)).toFixed(2)}" title="${Math.round(s.wpm)} wpm">${esc(s.word)}</span>`
+    )
+    .join("");
+  const slow = speeds
+    .filter((s) => !s.error && s.word.length > 2)
+    .sort((a, b) => a.wpm - b.wpm)
+    .slice(0, 3);
+  $("#rhythmSlowest").innerHTML =
+    speeds.length >= 8 && slow.length
+      ? `Slowest: ${slow.map((s) => `<em>${esc(s.word)}</em> ${Math.round(s.wpm)} wpm`).join(", ")}.`
+      : "";
 }
 
 export async function showResult(result, context) {
@@ -79,14 +132,19 @@ export async function showResult(result, context) {
   $("#resAcc").title = `${result.acc.toFixed(2)}%`;
   $("#resRaw").textContent = Math.round(result.rawWpm);
   $("#resRaw").title = `${result.rawWpm.toFixed(2)} wpm`;
-  $("#resChars").textContent = result.charStats.join("/");
+  charactersMarkup(result.charStats);
+  const lost = Math.round(result.rawWpm - result.wpm);
+  $("#resRawNote").textContent = lost > 0 ? `${lost} wpm lost to mistakes` : "Nothing lost to mistakes";
   $("#resConsistency").textContent = `${Math.round(result.consistency)}%`;
   $("#resConsistency").title = `${result.consistency.toFixed(2)}%`;
   $("#resTime").textContent = `${Math.round(result.testDuration)}s`;
   $("#resTime").title = `${result.testDuration.toFixed(2)}s`;
-  $("#resSession").textContent = `${formatDuration(context.sessionSeconds)} session`;
+  $("#resSession").textContent = `${formatDuration(context.sessionSeconds)} this session`;
   $("#resTestType").innerHTML = testTypeText(result, settings);
   $("#resVerdict").textContent = verdictText(result, settings, context);
+  rhythmMarkup(ctx);
+  const meters = $$("#result .meter span");
+  meters.forEach((m) => m.style.setProperty("--v", "0%"));
 
   const other = [...(invalid.length ? [`invalid (${invalid.join(", ")})`] : []), ...(repeated ? ["repeated"] : [])];
   $("#result .group.info").classList.toggle("hidden", !other.length);
@@ -116,6 +174,10 @@ export async function showResult(result, context) {
   countToken++;
   countUp($("#resWpm"), result.wpm, Math.round);
   countUp($("#resAcc"), result.acc, (v) => `${Math.floor(v)}%`);
+  requestAnimationFrame(() => {
+    meters[0].style.setProperty("--v", `${result.acc}%`);
+    meters[1].style.setProperty("--v", `${result.consistency}%`);
+  });
   // Don't steal focus from the command line or a modal opened while the test ran.
   if (!document.activeElement?.closest("#commandLine, #modal")) document.activeElement?.blur();
 }
@@ -139,6 +201,12 @@ async function saveResult(result) {
   }
 }
 
+// Hex colour with alpha, for the wash under the speed line.
+const alpha = (hex, a) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+};
+
 function renderChart(result, animate = false) {
   const { wpm, raw, err } = result.chartData;
   const labels = wpm.map((_, i) => i + 1);
@@ -147,7 +215,7 @@ function renderChart(result, animate = false) {
   const line = css("--line-color");
   const error = css("--error-color");
   const font = { family: css("--font-ui"), size: 11 };
-  const maxErr = Math.max(...err, 1);
+  const last = wpm.length - 1;
 
   chart?.destroy();
   if (!window.Chart) return;
@@ -160,37 +228,47 @@ function renderChart(result, animate = false) {
           label: "wpm",
           data: wpm,
           borderColor: main,
-          backgroundColor: main,
+          // A soft wash beneath the line that fades out before the baseline.
+          backgroundColor: ({ chart: { ctx: c, chartArea: a } }) => {
+            if (!a) return "transparent";
+            const g = c.createLinearGradient(0, a.top, 0, a.bottom);
+            g.addColorStop(0, alpha(main, 0.16));
+            g.addColorStop(1, alpha(main, 0));
+            return g;
+          },
+          fill: "origin",
           borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 3,
-          tension: 0.35,
-          yAxisID: "wpm",
+          // Only the final second gets a point: where the result landed.
+          pointRadius: (c) => (c.dataIndex === last ? 3.5 : 0),
+          pointBackgroundColor: main,
+          pointBorderWidth: 0,
+          pointHoverRadius: 4,
+          tension: 0.4,
           order: 2,
         },
         {
           label: "raw",
           data: raw,
-          borderColor: sub,
-          backgroundColor: sub,
-          borderWidth: 1.25,
-          borderDash: [3, 3],
+          borderColor: alpha(sub, 0.55),
+          borderWidth: 1,
           pointRadius: 0,
-          pointHoverRadius: 3,
-          tension: 0.35,
-          yAxisID: "wpm",
+          pointHoverRadius: 0,
+          tension: 0.4,
           order: 3,
         },
         {
+          // Errors are small ticks resting on the baseline, one per second that had any.
           label: "errors",
-          data: err.map((e) => (e > 0 ? e : null)),
+          data: err.map((e) => (e > 0 ? 0 : null)),
           type: "scatter",
           borderColor: error,
           backgroundColor: error,
-          pointStyle: "rectRot",
-          pointRadius: 3,
-          pointBorderWidth: 0,
-          yAxisID: "error",
+          pointStyle: "line",
+          rotation: 90,
+          pointRadius: 6,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+          clip: false,
           order: 1,
         },
       ],
@@ -200,41 +278,48 @@ function renderChart(result, animate = false) {
       maintainAspectRatio: false,
       animation: animate && !reducedMotion() ? { duration: 900, easing: "easeOutQuart" } : { duration: 0 },
       interaction: { mode: "index", intersect: false },
+      layout: { padding: { top: 8, right: 6 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           backgroundColor: css("--bg-color"),
-          titleColor: css("--text-color"),
+          titleColor: sub,
           bodyColor: css("--text-color"),
           borderColor: line,
           borderWidth: 1,
           cornerRadius: 4,
-          padding: 10,
+          padding: { x: 12, y: 10 },
           titleFont: font,
-          bodyFont: font,
-          callbacks: { title: (items) => `${items[0].label}s` },
+          bodyFont: { ...font, size: 12 },
+          displayColors: false,
+          callbacks: {
+            title: (items) => `Second ${items[0].label}`,
+            label: (item) => {
+              if (item.dataset.label === "errors") return `${err[item.dataIndex]} ${err[item.dataIndex] === 1 ? "error" : "errors"}`;
+              return item.dataset.label === "wpm" ? `${Math.round(item.raw)} wpm` : `${Math.round(item.raw)} raw`;
+            },
+          },
         },
       },
       scales: {
         x: {
-          ticks: { color: sub, font, autoSkip: true, maxRotation: 0 },
-          grid: { display: false },
-          border: { color: line },
-        },
-        wpm: {
-          position: "left",
-          beginAtZero: true,
-          ticks: { color: sub, font, maxTicksLimit: 5, precision: 0 },
-          grid: { color: line },
-          border: { display: false },
-        },
-        error: {
-          position: "right",
-          beginAtZero: true,
-          max: Math.ceil(maxErr * 1.2) || 1,
-          ticks: { color: sub, font, precision: 0, maxTicksLimit: 5 },
+          ticks: {
+            color: sub,
+            font,
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 8,
+            callback: (_, i) => `${labels[i]}s`,
+          },
           grid: { display: false },
           border: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          grace: "8%",
+          ticks: { color: sub, font, maxTicksLimit: 4, precision: 0, padding: 10 },
+          grid: { color: line, drawTicks: false },
+          border: { display: false, dash: [2, 4] },
         },
       },
     },
