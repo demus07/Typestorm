@@ -3,123 +3,432 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monkeytype clone</title>
+    <meta name="theme-color" content="#16151f" />
+    <meta name="description" content="Typestorm is a quiet, customisable typing test. Measure your speed and accuracy, keep a record of every result." />
+    <title>Typestorm | typing test</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
-      integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-    />
-    <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="/css/style.css" />
+    <script>
+      window.__BOOT__ = <%- JSON.stringify(boot).replace(/</g, "\\u003c") %>;
+      // Apply the last used theme colours before first paint to avoid a flash of the default theme.
+      try {
+        var vars = JSON.parse(localStorage.getItem("typestorm-theme-vars") || "null");
+        if (vars && vars["--line-color"]) for (var k in vars) document.documentElement.style.setProperty(k, vars[k]);
+      } catch (e) {}
+      // The opening sequence plays once per browser session, and never with reduced motion.
+      try {
+        if (sessionStorage.getItem("typestorm-overture") || matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("noOverture");
+      } catch (e) {
+        document.documentElement.classList.add("noOverture");
+      }
+    </script>
   </head>
-
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light">
-      <a class="navbar-brand" href="#">Typestorm</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-toggle="collapse"
-        data-target="#navbarNav"
-        aria-controls="navbarNav"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <a class="nav-link" href="/leaderboard">Leaderboard</a>
-          </li>
-          <% if (currentUser) { %>
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">Logout</a>
-          </li>
-          <% } else { %>
-          <li class="nav-item">
-            <a class="nav-link" href="/login">Login / Register</a>
-          </li>
-          <% } %>
-        </ul>
+    <a class="skipLink" href="#pages">Skip to content</a>
+    <div id="overture" aria-hidden="true">
+      <div class="stage">
+        <div class="keys"><span class="keycap" style="--i:0">t</span><span class="keycap" style="--i:1">y</span><span class="keycap" style="--i:2">p</span><span class="keycap" style="--i:3">e</span><span class="keycap" style="--i:4">s</span><span class="keycap" style="--i:5">t</span><span class="keycap" style="--i:6">o</span><span class="keycap" style="--i:7">r</span><span class="keycap" style="--i:8">m</span></div>
+        <div class="ovWord"><span class="typed"></span><span class="ovCaret"></span></div>
+        <p class="tagline">A quiet place to type.</p>
       </div>
+    </div>
+    <div id="notificationCenter" aria-live="polite"></div>
+
+    <div id="app">
+      <header id="header">
+        <a id="logo" href="/" data-link aria-label="Typestorm, start a test">
+          <span class="wordmark">typestorm</span><span class="icon" aria-hidden="true"></span>
+        </a>
+        <nav id="nav" aria-label="Main">
+          <a href="/" data-link data-nav>Test</a>
+          <a href="/leaderboards" data-link data-nav>Leaderboard</a>
+          <a href="/settings" data-link data-nav>Settings</a>
+          <a href="/about" data-link data-nav>About</a>
+        </nav>
+        <div class="headerRight">
+          <button type="button" class="iconLink hidden" id="alertsButton" aria-label="Notifications"><i class="far fa-bell"></i></button>
+          <div id="accountButtonWrap"></div>
+        </div>
+      </header>
+
+      <main id="pages" tabindex="-1">
+        <!-- ================= test ================= -->
+        <section class="page hidden" id="pageTest" data-page="test" aria-label="Typing test">
+          <div id="testConfig" role="group" aria-label="Test options">
+            <div class="group modeGroup" role="group" aria-labelledby="cfgMode">
+              <div class="visuallyHidden" id="cfgMode">Mode</div>
+              <div class="opts">
+                <button type="button" class="opt" data-mode="time">time</button>
+                <button type="button" class="opt" data-mode="words">words</button>
+                <button type="button" class="opt" data-mode="quote">quote</button>
+                <button type="button" class="opt" data-mode="zen">zen</button>
+                <button type="button" class="opt" data-mode="custom">custom</button>
+              </div>
+            </div>
+            <div class="group sub time" role="group" aria-labelledby="cfgTime">
+              <div class="visuallyHidden" id="cfgTime">Seconds</div>
+              <div class="opts">
+                <button type="button" class="opt" data-time="15">15</button>
+                <button type="button" class="opt" data-time="30">30</button>
+                <button type="button" class="opt" data-time="60">60</button>
+                <button type="button" class="opt" data-time="120">120</button>
+                <button type="button" class="opt customAmount" data-custom="time">other</button>
+              </div>
+            </div>
+            <div class="group sub words" role="group" aria-labelledby="cfgWords">
+              <div class="visuallyHidden" id="cfgWords">Words</div>
+              <div class="opts">
+                <button type="button" class="opt" data-words="10">10</button>
+                <button type="button" class="opt" data-words="25">25</button>
+                <button type="button" class="opt" data-words="50">50</button>
+                <button type="button" class="opt" data-words="100">100</button>
+                <button type="button" class="opt customAmount" data-custom="words">other</button>
+              </div>
+            </div>
+            <div class="group sub quote" role="group" aria-labelledby="cfgQuote">
+              <div class="visuallyHidden" id="cfgQuote">Length</div>
+              <div class="opts">
+                <button type="button" class="opt" data-quote="all">any</button>
+                <button type="button" class="opt" data-quote="short">short</button>
+                <button type="button" class="opt" data-quote="medium">medium</button>
+                <button type="button" class="opt" data-quote="long">long</button>
+                <button type="button" class="opt" data-quote="thicc">longest</button>
+              </div>
+            </div>
+            <div class="group sub custom" role="group" aria-labelledby="cfgCustom">
+              <div class="visuallyHidden" id="cfgCustom">Your text</div>
+              <div class="opts">
+                <button type="button" class="opt" data-action="customText">edit text</button>
+              </div>
+            </div>
+            <div class="group puncAndNum" role="group" aria-labelledby="cfgInclude">
+              <div class="visuallyHidden" id="cfgInclude">Include</div>
+              <div class="opts">
+                <button type="button" class="opt" data-toggle="punctuation">punctuation</button>
+                <button type="button" class="opt" data-toggle="numbers">numbers</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="testStage">
+            <div id="typingTest">
+              <div class="testMeta">
+                <p id="greeting" class="greeting"></p>
+                <button type="button" id="languageButton" class="metaLink"><span>english</span></button>
+                <div id="liveStats" aria-hidden="true">
+                  <div id="miniTimer" class="hidden"></div>
+                  <div id="miniWpm" class="hidden"></div>
+                  <div id="miniAcc" class="hidden"></div>
+                </div>
+              </div>
+              <div id="wordsWrapper">
+                <input id="wordsInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" tabindex="0" aria-label="Typing input" />
+                <div id="textTimer" class="hidden"></div>
+                <div id="outOfFocusWarning" class="hidden">Click or press any key to continue</div>
+                <div id="words"></div>
+              </div>
+              <div id="barTimer" class="hidden"><div class="fill"></div></div>
+              <div id="keymap" class="hidden"></div>
+              <div id="capsWarning" class="hidden" role="status">Caps Lock is on</div>
+              <div class="testFoot">
+                <button type="button" id="restartTestButton" class="restart" aria-label="Restart test"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>restart</span></button>
+              </div>
+            </div>
+
+            <div id="result" class="hidden">
+              <div class="stats">
+                <div class="group wpm">
+                  <div class="top label">Words per minute<span class="crown hidden">Personal best</span></div>
+                  <div class="bottom" id="resWpm">-</div>
+                  <p class="verdict" id="resVerdict"></p>
+                </div>
+                <div class="group acc">
+                  <div class="top label">Accuracy</div>
+                  <div class="bottom" id="resAcc">-</div>
+                </div>
+              </div>
+              <div class="chart">
+                <canvas id="resultChart" aria-label="Speed over the test, second by second" role="img"></canvas>
+              </div>
+              <div class="legend" aria-hidden="true"><span class="k wpm">wpm</span><span class="k raw">raw</span><span class="k err">errors</span></div>
+              <dl class="morestats">
+                <div class="group testType"><dt class="top">Test</dt><dd class="bottom" id="resTestType"></dd></div>
+                <div class="group raw"><dt class="top">Raw wpm</dt><dd class="bottom" id="resRaw"></dd></div>
+                <div class="group key"><dt class="top">Characters</dt><dd class="bottom" id="resChars" title="correct / incorrect / extra / missed"></dd></div>
+                <div class="group consistency"><dt class="top">Consistency</dt><dd class="bottom" id="resConsistency"></dd></div>
+                <div class="group time"><dt class="top">Time</dt><dd class="bottom" id="resTime"></dd><dd class="session" id="resSession"></dd></div>
+                <div class="group source hidden"><dt class="top">Source</dt><dd class="bottom" id="resSource"></dd></div>
+                <div class="group info hidden"><dt class="top">Note</dt><dd class="bottom" id="resOther"></dd></div>
+              </dl>
+              <div class="buttons">
+                <button type="button" class="button primary" id="nextTestButton">Next test<span class="arrow" aria-hidden="true">→</span></button>
+                <div class="secondary">
+                  <button type="button" class="textLink" id="repeatTestButton">Repeat</button>
+                  <button type="button" class="textLink" id="practiceMissedButton">Practise missed words</button>
+                  <button type="button" class="textLink" id="wordsHistoryButton">Input history</button>
+                  <button type="button" class="textLink" id="replayButton">Replay</button>
+                  <button type="button" class="textLink" id="screenshotButton">Copy as image</button>
+                </div>
+              </div>
+              <div id="resultSaveNotice" class="hidden"><a href="/login" data-link>Sign in</a> to keep results like this one.</div>
+              <div id="resultWordsHistory" class="hidden">
+                <div class="heading label">Input history</div>
+                <div class="words"></div>
+              </div>
+              <div id="resultReplay" class="hidden">
+                <div class="heading"><span class="label">Replay</span><button type="button" class="iconLink" id="replayToggle" aria-label="Play or pause replay"><i class="fas fa-play"></i></button><span id="replayTime">0s</span></div>
+                <div class="words"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= settings ================= -->
+        <section class="page hidden" id="pageSettings" data-page="settings">
+          <header class="pageHead">
+            <h1 class="display">Tune the test to <em>your</em> hands.</h1>
+            <p class="lede">Changes save as you make them. Every option is also in the command line: press <kbd>esc</kbd> anywhere.</p>
+          </header>
+          <div class="settingsLayout">
+            <nav class="sectionNav" aria-label="Settings sections"></nav>
+            <div class="settingsMain">
+              <label class="searchBar"><span class="visuallyHidden">Search settings</span><i class="fas fa-search" aria-hidden="true"></i><input type="text" id="settingsSearch" placeholder="Search settings" autocomplete="off" /></label>
+              <div class="sections"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= leaderboards ================= -->
+        <section class="page hidden" id="pageLeaderboards" data-page="leaderboards">
+          <aside class="sidebar">
+            <h1 class="display title">The <em>fastest</em> typists.</h1>
+            <p class="subtitle"></p>
+            <div class="filter" role="group" aria-labelledby="lbPeriod">
+              <div class="label" id="lbPeriod">Period</div>
+              <div class="buttonGroup">
+                <button type="button" class="opt" data-period="allTime">all time</button>
+                <button type="button" class="opt" data-period="daily">today</button>
+              </div>
+            </div>
+            <div class="filter" role="group" aria-labelledby="lbTest">
+              <div class="label" id="lbTest">Test</div>
+              <div class="buttonGroup">
+                <button type="button" class="opt" data-lbmode="15">15 seconds</button>
+                <button type="button" class="opt" data-lbmode="60">60 seconds</button>
+              </div>
+            </div>
+            <p class="rules">English words, no punctuation or numbers. Each typist appears once, with their best result. Results under 75% accuracy are never saved.</p>
+          </aside>
+          <div class="content">
+            <div class="yourRank"></div>
+            <div class="tableWrap">
+              <table class="lbTable">
+                <thead>
+                  <tr><th class="rank" scope="col">#</th><th class="name" scope="col">Typist</th><th class="num" scope="col">wpm</th><th class="num" scope="col">Accuracy</th><th class="num" scope="col">Raw</th><th class="num" scope="col">Consistency</th><th class="num date" scope="col">Date</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="bar">
+              <div class="navigation">
+                <button type="button" class="textLink" data-lbnav="first">First page</button>
+                <button type="button" class="textLink" data-lbnav="you">Find me</button>
+                <span class="spacer"></span>
+                <button type="button" class="iconLink" data-lbnav="prev" aria-label="Previous page"><i class="fas fa-arrow-left"></i></button>
+                <div class="pageNumber"></div>
+                <button type="button" class="iconLink" data-lbnav="next" aria-label="Next page"><i class="fas fa-arrow-right"></i></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= about ================= -->
+        <section class="page hidden" id="pageAbout" data-page="about">
+          <header class="pageHead aboutHero">
+            <h1 class="display">A typing test that gets out of your <em>way</em>.</h1>
+            <p class="lede">Typestorm measures how fast and how accurately you type. No ads, no email sign-up, and every setting is a keystroke away.</p>
+          </header>
+
+          <div class="globalStats hidden">
+            <div class="stat"><div class="value" id="statStarted">-</div><div class="label">Tests started</div></div>
+            <div class="stat"><div class="value" id="statCompleted">-</div><div class="label">Tests completed</div></div>
+            <div class="stat"><div class="value" id="statTime">-</div><div class="label">Time spent typing</div></div>
+            <p class="caption">Totals across every registered account, all time. Tests taken while signed out are not counted.</p>
+          </div>
+
+          <div class="aboutSection">
+            <div class="num label">01</div>
+            <h2>Word set</h2>
+            <div class="body">
+              <p>By default the test draws from the 200 most common English words. A larger set of about 2,000 words is available from the language link above the test, or from the command line.</p>
+            </div>
+          </div>
+          <div class="aboutSection" id="keybinds">
+            <div class="num label">02</div>
+            <h2>Keybinds</h2>
+            <div class="body">
+              <dl class="keyList">
+                <div><dt><kbd>tab</kbd> then <kbd>enter</kbd></dt><dd>Restart the test (or <kbd>tab</kbd> alone, if quick restart is set to tab)</dd></div>
+                <div><dt><kbd>esc</kbd> or <kbd>ctrl</kbd> <kbd>shift</kbd> <kbd>p</kbd></dt><dd>Open the command line, which reaches every setting</dd></div>
+                <div><dt><kbd>ctrl</kbd> <kbd>backspace</kbd></dt><dd>Delete the whole word</dd></div>
+                <div><dt><kbd>shift</kbd> <kbd>enter</kbd></dt><dd>Finish a zen mode test</dd></div>
+              </dl>
+            </div>
+          </div>
+          <div class="aboutSection band">
+            <div class="num label">03</div>
+            <h2>How results are measured</h2>
+            <div class="body">
+              <dl class="measureList">
+                <div><dt>wpm</dt><dd>Characters in correctly typed words, including spaces, divided by five and scaled to one minute.</dd></div>
+                <div><dt>Raw wpm</dt><dd>The same calculation, counting every word you typed, correct or not.</dd></div>
+                <div><dt>Accuracy</dt><dd>The share of key presses that were correct.</dd></div>
+                <div><dt>Characters</dt><dd>Correct, incorrect, extra and missed characters, in that order.</dd></div>
+                <div><dt>Consistency</dt><dd>How steady your raw speed was from second to second. Closer to 100% is steadier.</dd></div>
+              </dl>
+              <p>Results under 75% accuracy are not saved. The server recalculates every saved result from its character counts.</p>
+            </div>
+          </div>
+          <div class="aboutSection">
+            <div class="num label">04</div>
+            <h2>Stats</h2>
+            <div class="body">
+              <p>Tests started counts every test you began; tests completed counts those you finished. Personal bests are kept for each mode and length. The leaderboards rank the best English 15 and 60 second results without punctuation or numbers.</p>
+            </div>
+          </div>
+          <div class="aboutSection" id="privacy">
+            <div class="num label">05</div>
+            <h2>Privacy</h2>
+            <div class="body">
+              <p>Settings are stored in your browser. With an account, the server stores your username, a hashed password, your settings and your results. Nothing is shared with third parties.</p>
+            </div>
+          </div>
+          <div class="aboutSection">
+            <div class="num label">06</div>
+            <h2>Credits</h2>
+            <div class="body">
+              <p>Inspired by the open-source typing test <a href="https://github.com/monkeytypegame/monkeytype" target="_blank" rel="noopener">monkeytype</a>. Icons by Font Awesome, charts by Chart.js, type set in Newsreader and Schibsted Grotesk.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= login ================= -->
+        <section class="page hidden" id="pageLogin" data-page="login">
+          <div class="loginIntro">
+            <h1 class="display">Keep a record of every <em>test</em>.</h1>
+            <ol class="benefits">
+              <li>Every result saved, with a chart of your progress.</li>
+              <li>Personal bests for each mode and length.</li>
+              <li>A place on the daily and all-time leaderboards.</li>
+              <li>Your settings follow you to any device.</li>
+            </ol>
+            <p class="effort">Just a username and a password. No email address needed.</p>
+          </div>
+          <div class="loginForms">
+            <form class="authForm" id="loginForm" autocomplete="on">
+              <h2>Sign in</h2>
+              <label class="field"><span>Username</span><input type="text" name="username" autocomplete="username" required /></label>
+              <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
+              <label class="checkbox"><input type="checkbox" name="remember" checked /><span class="box" aria-hidden="true"></span>Keep me signed in</label>
+              <button type="submit" class="button primary">Sign in<span class="arrow" aria-hidden="true">→</span></button>
+              <p class="switch">New here? <button type="button" class="textLink" data-auth-switch="register">Create an account</button></p>
+            </form>
+            <form class="authForm hidden" id="registerForm" autocomplete="on">
+              <h2>Create an account</h2>
+              <label class="field"><span>Username</span><input type="text" name="username" autocomplete="username" maxlength="16" required aria-describedby="regUserHint" /></label>
+              <p class="hint" id="regUserHint">3 to 16 characters: letters, numbers, _ . -</p>
+              <label class="field"><span>Password</span><input type="password" name="password" autocomplete="new-password" required aria-describedby="regPassHint" /></label>
+              <p class="hint" id="regPassHint">At least 8 characters.</p>
+              <label class="field"><span>Repeat password</span><input type="password" name="verifyPassword" autocomplete="new-password" required /></label>
+              <button type="submit" class="button primary">Create account<span class="arrow" aria-hidden="true">→</span></button>
+              <p class="switch">Already have one? <button type="button" class="textLink" data-auth-switch="login">Sign in</button></p>
+            </form>
+          </div>
+        </section>
+
+        <!-- ================= account / profile ================= -->
+        <section class="page hidden" id="pageAccount" data-page="account">
+          <div class="profileCard"></div>
+          <div class="pbs"></div>
+          <div class="accountOnly">
+            <div class="block">
+              <div class="label">Progress</div>
+              <div class="chartWrap"><canvas id="historyChart" role="img" aria-label="Speed of each saved test over time"></canvas></div>
+            </div>
+            <div class="block">
+              <div class="label">Averages and records</div>
+              <div class="statsGrid"></div>
+            </div>
+            <div class="block">
+              <div class="label historyHeading">History</div>
+              <div class="tableWrap">
+                <table class="historyTable">
+                  <thead><tr><th scope="col">wpm</th><th scope="col">Raw</th><th scope="col">Accuracy</th><th scope="col">Consistency</th><th scope="col">Chars</th><th scope="col">Test</th><th scope="col">Notes</th><th scope="col">Date</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <button type="button" class="textLink loadMore hidden">Show 10 more</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= 404 ================= -->
+        <section class="page hidden" id="page404" data-page="404">
+          <div class="label">Error 404</div>
+          <div class="big">Nothing to type <em>here</em>.</div>
+          <p>That page doesn't exist, or it has moved.</p>
+          <a href="/" data-link class="button primary">Back to the test<span class="arrow" aria-hidden="true">→</span></a>
+        </section>
+      </main>
+
+      <footer id="footer">
+        <div class="keyTips">
+          <span><kbd>tab</kbd> then <kbd>enter</kbd> restart</span>
+          <span><kbd>esc</kbd> command line</span>
+        </div>
+        <div class="bottom">
+          <div class="brand">Typestorm</div>
+          <nav class="links" aria-label="Footer">
+            <a href="https://github.com/demus07/typestorm" target="_blank" rel="noopener">GitHub</a>
+            <a href="/about" data-link>About</a>
+            <a href="/about#keybinds" data-link>Keybinds</a>
+            <a href="/about#privacy" data-link>Privacy</a>
+          </nav>
+          <div class="right">
+            <button type="button" class="textLink" id="footerTheme">Theme: <span id="footerThemeName">storm</span></button>
+            <span class="version">v<%= boot.version %></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <nav id="mobileBar" aria-label="Main">
+      <a href="/" data-link data-nav><i class="fas fa-keyboard" aria-hidden="true"></i>Test</a>
+      <a href="/leaderboards" data-link data-nav><i class="fas fa-list-ol" aria-hidden="true"></i>Ranks</a>
+      <a href="/settings" data-link data-nav><i class="fas fa-sliders" aria-hidden="true"></i>Settings</a>
+      <a href="/account" data-link data-nav data-account-link><i class="far fa-user" aria-hidden="true"></i><span>Account</span></a>
     </nav>
-    <h1 class="main-heading">Typestorm</h1>
-    <div class="container">
-      <div id="pill-wrapper">
-        <div class="pill-container">
-          <div class="stats-bar">
-            <div id="timer-display"><i class="fas fa-stopwatch"></i> 30s</div>
-            <div id="wpm-display"><i class="fas fa-keyboard"></i> 0</div>
-            <div id="accuracy-display">
-              <i class="fas fa-bullseye"></i> 100%
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="pill-group">
-            <div class="pill" data-time="15">15s</div>
-            <div class="pill" data-time="30">30s</div>
-            <div class="pill" data-time="60">60s</div>
-          </div>
-        </div>
-      </div>
 
-      <div class="typing-container">
-        <!-- <span id="caret"></span> -->
-        <span id="caret" style="transform: translate(0, 0)"></span>
-        <div id="words" class="word-display">
-          <% const words = randomWords.generate(99); %> <% words.forEach(word =>
-          { %>
-          <span class="word">
-            <% word.split('').forEach(char => { %>
-            <span class="letter"><%= char %></span>
-            <% }) %>
-            <span class="letter">&nbsp;</span>
-          </span>
-          <% }) %>
-        </div>
-      </div>
-
-      <button id="restart-btn">tab - restart</button>
-      <div class="pill summary-pill" style="display: none">
-        <div id="summary-screen" class="summary-card" style="display: none">
-          <h2 class="summary-title">Test Summary</h2>
-          <canvas id="wpmChart" height="150"></canvas>
-          <div class="summary-metrics">
-            <div class="metric-box">
-              <div class="metric-label">WPM</div>
-              <div id="summary-wpm" class="metric-value">0</div>
-            </div>
-            <div class="metric-box">
-              <div class="metric-label">Accuracy</div>
-              <div id="summary-accuracy" class="metric-value">0%</div>
-            </div>
-          </div>
-          <button class="btn-login summary-restart">tab - restart</button>
-        </div>
+    <div id="alertsPanel" class="hidden">
+      <div class="inner" role="dialog" aria-label="Notifications">
+        <div class="head"><span class="label">Notifications</span><button type="button" class="textLink" id="clearAlerts">Clear</button></div>
+        <div class="list"></div>
       </div>
     </div>
 
-    <script src="/script.js"></script>
-    <script>
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Tab") {
-          e.preventDefault();
-          location.reload();
-        }
-      });
-    </script>
+    <div id="commandLineWrapper" class="hidden">
+      <div id="commandLine" role="dialog" aria-label="Command line">
+        <div class="searchRow"><i class="fas fa-search" aria-hidden="true"></i><input type="text" id="commandInput" placeholder="Search commands and settings" autocomplete="off" spellcheck="false" aria-label="Search commands" /></div>
+        <div class="list" id="commandList" role="listbox"></div>
+      </div>
+    </div>
+
+    <div id="modalWrapper" class="hidden"><div id="modal" role="dialog" aria-modal="true"></div></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script type="module" src="/js/main.js"></script>
   </body>
 </html>
