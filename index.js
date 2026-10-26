@@ -495,8 +495,10 @@ app.post("/api/account/delete", requireAuth, authLimit, async (req, res) => {
 
 // ---------- leaderboards / public stats ----------
 
+const LEADERBOARD_TIMES = ["15", "30", "60"];
+
 app.get("/api/leaderboards", async (req, res) => {
-  const mode2 = req.query.mode2 === "60" ? "60" : "15";
+  const mode2 = LEADERBOARD_TIMES.includes(req.query.mode2) ? req.query.mode2 : "15";
   const daily = req.query.period === "daily";
   const match = { mode: "time", mode2, language: "english", punctuation: false, numbers: false, bailedOut: { $ne: true } };
   const now = new Date();

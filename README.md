@@ -7,7 +7,7 @@ A minimalistic, customizable typing test inspired by [monkeytype](https://github
 - **Results:** wpm, raw, accuracy, consistency, character stats, a per-second chart with errors, input history, replay, practice missed words, and a screenshot copied to the clipboard.
 - **Command line:** `esc` or `ctrl/cmd + shift + p` reaches every setting, including live theme preview.
 - **Settings:** 11 colour themes, 14 typing fonts, caret styles, pace caret, keymap, sounds, difficulty (normal/expert/master), blind/freedom/confidence modes, stop on error, and more. Settings are stored locally and synced to your account.
-- **Accounts:** results history, personal bests, stats, public profiles, all-time and daily leaderboards (English time 15 / 60).
+- **Accounts:** results history, personal bests, stats, public profiles, all-time and daily leaderboards (English time 15 / 30 / 60).
 
 ## Running locally
 

@@ -38,7 +38,7 @@ async function load() {
           </tr>`;
         })
         .join("")
-    : `<tr><td colspan="7" class="empty">No qualifying results ${state.period === "daily" ? "today" : "yet"}. A 15 or 60 second English test, signed in, puts you here.</td></tr>`;
+    : `<tr><td colspan="7" class="empty">No qualifying results ${state.period === "daily" ? "today" : "yet"}. A 15, 30 or 60 second English test, signed in, puts you here.</td></tr>`;
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
   page.querySelector(".pageNumber").textContent = `Page ${state.page + 1} of ${pages}`;
