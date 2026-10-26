@@ -20,13 +20,32 @@ const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
 if (!mongoUri) {
   console.warn("MONGO_URI is not set - accounts, results and leaderboards will not work.");
 }
-mongoose
-  .connect(mongoUri || "mongodb://127.0.0.1:27017/typestorm", { dbName: process.env.MONGO_DB || undefined })
-  .then(() => {
-    console.log("MongoDB connected");
-    migrateLegacyData().catch((err) => console.error("Migration failed:", err));
-  })
-  .catch((err) => console.error("MongoDB connection error:", err.message));
+// Connects once and is awaited by every request. A failed attempt is forgotten
+// so the next request retries: a serverless instance can outlive a bad start.
+let connecting = null;
+let migrated = false;
+function connectDb() {
+  if (mongoose.connection.readyState === 1) return Promise.resolve();
+  connecting ??= mongoose
+    .connect(mongoUri || "mongodb://127.0.0.1:27017/typestorm", {
+      dbName: process.env.MONGO_DB || undefined,
+      serverSelectionTimeoutMS: 6000,
+    })
+    .then(() => {
+      console.log("MongoDB connected");
+      if (!migrated) {
+        migrated = true;
+        migrateLegacyData().catch((err) => console.error("Migration failed:", err));
+      }
+    })
+    .catch((err) => {
+      connecting = null;
+      console.error("MongoDB connection error:", err.message);
+      throw err;
+    });
+  return connecting;
+}
+connectDb().catch(() => {});
 
 // ---------- models ----------
 
@@ -170,17 +189,33 @@ if (isProd) app.set("trust proxy", 1);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.json({ limit: "256kb" }));
-app.use(
-  session({
-    name: "typestorm.sid",
-    secret: sessionSecret,
-    store: new MongoSessionStore(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax", secure: isProd },
-  })
-);
 app.use(express.static(path.join(__dirname, "public"), { maxAge: isProd ? "1h" : 0 }));
+// Without a database, the API says so plainly and pages still render, signed out.
+app.use((req, res, next) =>
+  connectDb().then(
+    () => next(),
+    () => {
+      if (req.path.startsWith("/api")) {
+        return res.status(503).json({ message: "The database is unavailable. Please try again shortly." });
+      }
+      req.dbDown = true;
+      next();
+    }
+  )
+);
+const sessions = session({
+  name: "typestorm.sid",
+  secret: sessionSecret,
+  store: new MongoSessionStore(),
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, sameSite: "lax", secure: isProd },
+});
+app.use((req, res, next) => {
+  if (!req.dbDown) return sessions(req, res, next);
+  req.session = { destroy: (cb) => cb() };
+  next();
+});
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const findUserByName = (username) => User.findOne({ username }).collation(CI);
